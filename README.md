@@ -100,6 +100,8 @@ Password asli : CIHUY123
 Status: Dekripsi berhasil ✅
 ```
 
+## 🖥️ Contoh Output INTERFACE
+![image](output.png)
 ---
 
 ## ⚙️ Cara Instalasi & Menjalankan Program
