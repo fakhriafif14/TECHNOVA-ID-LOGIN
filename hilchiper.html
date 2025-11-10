@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hill Cipher — TechNova ID (Light)</title>
+  <style>
+    :root{
+      --bg:#f8fafc; /* slate-50 */
+      --card:#ffffff;
+      --muted:#64748b; /* slate-500 */
+      --accent:#0ea5a3; /* teal-500 */
+      --accent-2:#0ea5e9; /* sky */
+      --ok:#16a34a; /* green-600 */
+      --bad:#ef4444; /* red-500 */
+      --mono: "Courier New", monospace;
+      --radius:10px;
+      --shadow: 0 6px 20px rgba(2,6,23,0.06);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      background:var(--bg);
+      color:#0f172a;
+      padding:28px;
+      display:flex;
+      justify-content:center;
+    }
+
+    .wrap{
+      width:900px;
+      max-width:96%;
+    }
+
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:18px;
+    }
+    .title{
+      font-size:20px;
+      font-weight:700;
+      color:#0f172a;
+    }
+    .subtitle{ color:var(--muted); font-size:13px; margin-top:4px; }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:var(--shadow);
+      margin-bottom:14px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+    }
+
+    label{ display:block; font-size:13px; color:var(--muted); margin-bottom:8px; }
+    input[type="text"], select, input[type="number"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid #e6edf3;
+      background:#fff;
+      font-size:14px;
+      color:#0f172a;
+    }
+
+    .controls{ display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+    .btn{
+      background:var(--accent);
+      color:white;
+      border:none;
+      padding:8px 14px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow: 0 6px 18px rgba(14,165,163,0.12);
+    }
+    .btn.ghost{ background:#f1f5f9; color:#0f172a; border:1px solid #e2e8f0; box-shadow:none; }
+    .btn.small{ padding:6px 10px; font-size:13px; border-radius:7px; }
+
+    /* Matrix input grid */
+    .matrix-grid{ display:inline-grid; gap:8px; margin-top:6px; }
+    .matrix-grid input{ width:64px; text-align:center; }
+
+    .status-line{ font-family:var(--mono); font-size:13px; color:var(--muted); margin-top:8px; }
+
+    .info-block{
+      background:#f8fafc;
+      padding:12px;
+      border-radius:8px;
+      border:1px solid #e6eef2;
+      font-family:var(--mono);
+      color:#0f172a;
+      font-size:13px;
+    }
+
+    .info-row{ display:flex; justify-content:space-between; margin:4px 0; }
+    .info-key{ color:var(--muted); }
+    .info-val{ font-weight:700; }
+
+    .panel{
+      background:#ffffff;
+      border-radius:8px;
+      padding:12px;
+      border:1px solid #eef2f6;
+    }
+
+    .result-title{ font-weight:700; color:#0f172a; margin-bottom:8px; }
+    .result-line{ font-family:var(--mono); font-size:13px; margin:6px 0; color:#0b1220; }
+    .ok{ color:var(--ok); font-weight:700; }
+    .bad{ color:var(--bad); font-weight:700; }
+
+    .matrix-display pre{ margin:0; font-family:var(--mono); background:#fbfdfe; padding:10px; border-radius:6px; border:1px dashed #e6eef2; }
+
+    .footer-note{ font-size:12px; color:var(--muted); margin-top:10px; }
+
+    @media(max-width:820px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">TechNova ID — Hill Cipher Demo (Light)</div>
+        <div class="subtitle">Enkripsi username & password — pilih matriks 2×2 / 3×3, generate key otomatis atau edit manual.</div>
+      </div>
+      <div>
+        <button class="btn" id="btnGenerateHeader">Generate Key</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; gap:18px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+        <div>
+          <label>Ukuran Matriks</label>
+          <div class="controls">
+            <button class="btn small" id="btn2">2x2</button>
+            <button class="btn small ghost" id="btn3">3x3</button>
+            <div style="margin-left:8px; color:var(--muted); font-size:13px;">(klik untuk ubah ukuran)</div>
+          </div>
+        </div>
+
+        <div style="flex:1">
+          <label>Matrix Kunci (mod 26) — edit manual jika perlu</label>
+          <div id="matrixArea"></div>
+          <div class="status-line" id="matrixStatus">Status kunci: —</div>
+        </div>
+
+        <div style="width:220px;">
+          <label>&nbsp;</label>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" id="btnGen">Generate Key</button>
+            <button class="btn ghost" id="btnReset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+          <div style="flex:1">
+            <label>Username</label>
+            <input id="username" type="text" placeholder="contoh: fakhri a f" />
+          </div>
+          <div style="flex:1">
+            <label>Password</label>
+            <input id="password" type="text" placeholder="contoh: cihuy123" />
+          </div>
+          <div style="width:180px;">
+            <label>&nbsp;</label>
+            <select id="matrixSize" style="padding:10px 12px; border-radius:8px; border:1px solid #e6edf3;">
+              <option value="2">Matriks 2x2</option>
+              <option value="3">Matriks 3x3</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div style="flex:1">
+            <button class="btn" id="btnEncrypt">Enkripsi & Dekripsi</button>
+          </div>
+          <div style="flex:1;">
+            <div class="info-block" id="matrixInfo" aria-live="polite">
+              <div style="font-weight:700; margin-bottom:6px;">Informasi Matriks</div>
+              <div class="info-row"><div class="info-key">Determinan</div><div class="info-val" id="infoDet">-</div></div>
+              <div class="info-row"><div class="info-key">Determinan mod 26</div><div class="info-val" id="infoDetMod">-</div></div>
+              <div class="info-row"><div class="info-key">Invers det mod 26</div><div class="info-val" id="infoInvDet">-</div></div>
+              <div class="info-row"><div class="info-key">GCD(det mod 26, 26)</div><div class="info-val" id="infoGcd">-</div></div>
+              <div class="info-row"><div class="info-key">Status</div><div class="info-val" id="infoStatus">-</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card panel">
+        <div class="result-title">🔸 Username</div>
+        <div class="result-line"><b>Plaintext (Asli):</b> <span id="outUserPlain">-</span></div>
+        <div class="result-line"><b>Plaintext (Normalized):</b> <span id="outUserNorm">-</span></div>
+        <div class="result-line"><b>Ciphertext (Enkripsi):</b> <span id="outUserCipher">-</span></div>
+        <div class="result-line"><b>Hasil Dekripsi:</b> <span id="outUserDec">-</span></div>
+        <div id="userNote" class="footer-note"></div>
+      </div>
+
+      <div class="card panel">
+        <div class="result-title">🔸 Password</div>
+        <div class="result-line"><b>Plaintext (Asli):</b> <span id="outPassPlain">-</span></div>
+        <div class="result-line"><b>Plaintext (Normalized):</b> <span id="outPassNorm">-</span></div>
+        <div class="result-line"><b>Ciphertext (Enkripsi):</b> <span id="outPassCipher">-</span></div>
+        <div class="result-line"><b>Hasil Dekripsi:</b> <span id="outPassDec">-</span></div>
+        <div id="passNote" class="footer-note"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;" class="card matrix-display">
+      <div style="font-weight:700; margin-bottom:8px;">Matriks Kunci (mod 26)</div>
+      <pre id="matrixPrint">-</pre>
+    </div>
+
+  </div>
+
+  <script>
+    /* Hill cipher utils */
+    const MOD = 26;
+    const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    function mod(n,m=MOD){ return ((n % m) + m) % m; }
+
+    function egcd(a,b){
+      if(b===0) return {g:a,x:1,y:0};
+      const q=egcd(b,a%b);
+      return {g:q.g, x:q.y, y:q.x - Math.floor(a/b)*q.y};
+    }
+    function modInverse(a,m=MOD){
+      a = mod(a,m);
+      const r = egcd(a,m);
+      if(r.g !== 1) return null;
+      return mod(r.x,m);
+    }
+
+    function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); return b===0? a : gcd(b, a%b); }
+
+    function detMat(m){
+      const n=m.length;
+      if(n===2){
+        return m[0][0]*m[1][1] - m[0][1]*m[1][0];
+      } else if(n===3){
+        const a=m;
+        return a[0][0]*(a[1][1]*a[2][2]-a[1][2]*a[2][1])
+             - a[0][1]*(a[1][0]*a[2][2]-a[1][2]*a[2][0])
+             + a[0][2]*(a[1][0]*a[2][1]-a[1][1]*a[2][0]);
+      }
+      return 0;
+    }
+
+    function adjugate(m){
+      const n=m.length;
+      if(n===2) return [[m[1][1], -m[0][1]], [-m[1][0], m[0][0]]];
+      // 3x3 cofactor matrix then transpose
+      const cof = (i,j)=>{
+        const rows=[0,1,2].filter(r=>r!==i), cols=[0,1,2].filter(c=>c!==j);
+        const sub=[[m[rows[0]][cols[0]], m[rows[0]][cols[1]]], [m[rows[1]][cols[0]], m[rows[1]][cols[1]]]];
+        const d = sub[0][0]*sub[1][1] - sub[0][1]*sub[1][0];
+        return ((i+j)%2)? -d : d;
+      };
+      const cofM = [
+        [cof(0,0), cof(0,1), cof(0,2)],
+        [cof(1,0), cof(1,1), cof(1,2)],
+        [cof(2,0), cof(2,1), cof(2,2)]
+      ];
+      // transpose
+      return cofM[0].map((_,i)=> cofM.map(r=>r[i]) );
+    }
+
+    function inverseMatrix(m){
+      const n=m.length;
+      const d = detMat(m);
+      const dmod = mod(d);
+      const invDet = modInverse(dmod);
+      if(invDet === null) return null;
+      const adj = adjugate(m);
+      return adj.map(row=> row.map(v => mod(v * invDet)) );
+    }
+
+    function randInt(max){ return Math.floor(Math.random()*max); }
+
+    function randomMatrix(n){
+      return Array.from({length:n}, ()=> Array.from({length:n}, ()=> randInt(26)) );
+    }
+
+    function generateInvertibleMatrix(n){
+      // try multiple times until invertible mod 26
+      for(let i=0;i<4000;i++){
+        const cand = randomMatrix(n);
+        const d = detMat(cand);
+        const dmod = mod(d);
+        if(gcd(dmod, MOD) === 1 && modInverse(dmod) !== null) return cand;
+      }
+      // fallback identity
+      return Array.from({length:n}, (_,i)=> Array.from({length:n}, (_,j)=> i===j?1:0 ));
+    }
+
+    // Hill encrypt/decrypt using given matrix
+    function normalizeText(s){
+      const only = (s||'').toUpperCase().replace(/[^A-Z]/g,'');
+      return only;
+    }
+    function textToBlocks(text,n){
+      let t = normalizeText(text);
+      while(t.length % n !== 0) t += 'X';
+      const blocks = [];
+      for(let i=0;i<t.length;i+=n) blocks.push( [...t.slice(i,i+n)].map(ch => ch.charCodeAt(0)-65) );
+      return blocks;
+    }
+    function blocksToText(arr){ return arr.map(v => String.fromCharCode(mod(v)+65)).join(''); }
+
+    function matVecMul(mat, vec){
+      const n=mat.length;
+      const out = new Array(n).fill(0);
+      for(let i=0;i<n;i++){
+        let s=0;
+        for(let j=0;j<n;j++) s += mat[i][j]*vec[j];
+        out[i]=mod(s);
+      }
+      return out;
+    }
+
+    function encryptWithKey(plain, key){
+      const n=key.length;
+      const blocks = textToBlocks(plain,n);
+      const outNums = [];
+      blocks.forEach(b => outNums.push(...matVecMul(key,b)));
+      return blocksToText(outNums);
+    }
+
+    function decryptWithKey(cipher, key){
+      const inv = inverseMatrix(key);
+      if(!inv) return null;
+      const n=inv.length;
+      const blocks = textToBlocks(cipher, n);
+      const outNums = [];
+      blocks.forEach(b => outNums.push(...matVecMul(inv,b)));
+      return blocksToText(outNums);
+    }
+
+    /* ---------- UI Logic ---------- */
+    const matrixSizeSelect = document.getElementById('matrixSize');
+    const matrixArea = document.getElementById('matrixArea');
+    const matrixStatus = document.getElementById('matrixStatus');
+    const matrixPrint = document.getElementById('matrixPrint');
+    const infoDet = document.getElementById('infoDet');
+    const infoDetMod = document.getElementById('infoDetMod');
+    const infoInvDet = document.getElementById('infoInvDet');
+    const infoGcd = document.getElementById('infoGcd');
+    const infoStatus = document.getElementById('infoStatus');
+
+    let currentSize = 2;
+    let currentKey = generateInvertibleMatrix(2);
+
+    function renderMatrixInputs(){
+      matrixArea.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'matrix-grid';
+      grid.style.gridTemplateColumns = `repeat(${currentSize}, auto)`;
+      for(let r=0;r<currentSize;r++){
+        for(let c=0;c<currentSize;c++){
+          const inp = document.createElement('input');
+          inp.type='number';
+          inp.min='0';
+          inp.max='1000';
+          inp.value = currentKey[r][c];
+          inp.oninput = ()=> {
+            const val = parseInt(inp.value) || 0;
+            currentKey[r][c] = mod(val);
+            updateMatrixInfoDisplay();
+          };
+          grid.appendChild(inp);
+        }
+      }
+      matrixArea.appendChild(grid);
+      updateMatrixInfoDisplay();
+    }
+
+    function updateMatrixInfoDisplay(){
+      // determ, det mod, inv det, gcd, status
+      const d = detMat(currentKey);
+      const dmod = mod(d);
+      const invDet = modInverse(dmod);
+      const gcdVal = gcd(dmod, MOD);
+      const valid = (invDet !== null && gcdVal === 1);
+      infoDet.textContent = d;
+      infoDetMod.textContent = dmod;
+      infoInvDet.textContent = invDet === null ? '-' : invDet;
+      infoGcd.textContent = gcdVal;
+      infoStatus.textContent = valid ? '✓ VALID (dapat di-invers)' : '✖ TIDAK VALID';
+      infoStatus.className = valid ? 'info-val' : 'info-val';
+      matrixStatus.innerHTML = `Status kunci: ${ valid ? '<span class="ok">Invertible ✓</span>' : '<span class="bad">Tidak invertible ✕</span>' }`;
+      matrixPrint.textContent = currentKey.map(r=> r.map(v=>mod(v)).join(' ')).join('\\n');
+    }
+
+    function setMatrixSize(n){
+      currentSize = n;
+      matrixSizeSelect.value = n;
+      // generate key automatically when size changes
+      currentKey = generateInvertibleMatrix(n);
+      renderMatrixInputs();
+      // highlight buttons
+      document.getElementById('btn2').classList.toggle('ghost', n!==2);
+      document.getElementById('btn3').classList.toggle('ghost', n!==3);
+      document.getElementById('btn2').classList.toggle('btn', n===2);
+      document.getElementById('btn3').classList.toggle('btn', n===3);
+    }
+
+    document.getElementById('btn2').addEventListener('click', ()=> setMatrixSize(2));
+    document.getElementById('btn3').addEventListener('click', ()=> setMatrixSize(3));
+    matrixSizeSelect.addEventListener('change', ()=> setMatrixSize(parseInt(matrixSizeSelect.value)));
+
+    document.getElementById('btnGen').addEventListener('click', ()=> {
+      currentKey = generateInvertibleMatrix(currentSize);
+      renderMatrixInputs();
+    });
+    document.getElementById('btnGenerateHeader').addEventListener('click', ()=> {
+      currentKey = generateInvertibleMatrix(currentSize);
+      renderMatrixInputs();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      // reset inputs & outputs
+      document.getElementById('username').value='';
+      document.getElementById('password').value='';
+      document.getElementById('outUserPlain').textContent='-';
+      document.getElementById('outUserNorm').textContent='-';
+      document.getElementById('outUserCipher').textContent='-';
+      document.getElementById('outUserDec').textContent='-';
+      document.getElementById('outPassPlain').textContent='-';
+      document.getElementById('outPassNorm').textContent='-';
+      document.getElementById('outPassCipher').textContent='-';
+      document.getElementById('outPassDec').textContent='-';
+      currentKey = generateInvertibleMatrix(currentSize);
+      renderMatrixInputs();
+    });
+
+    document.getElementById('btnEncrypt').addEventListener('click', ()=> {
+      // read matrix from inputs (currentKey already synced on input)
+      // validate invertible
+      const d = detMat(currentKey);
+      const dmod = mod(d);
+      const invDet = modInverse(dmod);
+      const gcdVal = gcd(dmod, MOD);
+      const valid = (invDet !== null && gcdVal === 1);
+      if(!valid){
+        alert('Matriks kunci saat ini tidak invertible. Silakan generate key baru atau ubah nilai matriks sehingga invertible.');
+        return;
+      }
+      const usernameRaw = document.getElementById('username').value || '';
+      const passwordRaw = document.getElementById('password').value || '';
+
+      const userNorm = normalizeText(usernameRaw);
+      const passNorm = normalizeText(passwordRaw);
+
+      const cipherUser = encryptWithKey(userNorm, currentKey);
+      const plainUserAfter = decryptWithKey(cipherUser, currentKey) || '(error)';
+
+      const cipherPass = encryptWithKey(passNorm, currentKey);
+      const plainPassAfter = decryptWithKey(cipherPass, currentKey) || '(error)';
+
+      // display
+      document.getElementById('outUserPlain').textContent = usernameRaw || '-';
+      document.getElementById('outUserNorm').textContent = userNorm || '-';
+      document.getElementById('outUserCipher').textContent = cipherUser || '-';
+      document.getElementById('outUserDec').textContent = plainUserAfter || '-';
+
+      document.getElementById('outPassPlain').textContent = passwordRaw || '-';
+      document.getElementById('outPassNorm').textContent = passNorm || '-';
+      document.getElementById('outPassCipher').textContent = cipherPass || '-';
+      document.getElementById('outPassDec').textContent = plainPassAfter || '-';
+
+      // update matrix info display (redundant but safe)
+      updateMatrixInfoDisplay();
+    });
+
+    // initialize UI on load
+    window.addEventListener('load', ()=>{
+      setMatrixSize(2); // auto generate key for 2x2
+      renderMatrixInputs();
+      updateMatrixInfoDisplay();
+    });
+  </script>
+</body>
+</html>
